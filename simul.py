@@ -14,12 +14,28 @@ pygame.display.set_caption("Rotational Dynamics Simulation - Falling Mass")
 # Buttons
 start_img = pygame.image.load('start_btn.png').convert_alpha()
 exit_img = pygame.image.load('exit_btn.png').convert_alpha()
+play_img = pygame.image.load('play_btn.png').convert_alpha()
+clear_img = pygame.image.load('clear_btn.png').convert_alpha()
 title_img = pygame.image.load('menu_title.png').convert_alpha()
+input_img = pygame.image.load('input_table.png').convert_alpha()
 
 # Button instances
 start_button = button.Button(251, 240, start_img, 0.35)
 exit_button = button.Button(258, 298, exit_img, 0.35)
+play_button = button.Button(114, 255, play_img, 0.30)
+clear_button = button.Button(64, 255, clear_img, 0.30)
 menu_title = button.Button(95, 53, title_img, 0.7)
+input_table = button.Button(20, 22, input_img, 0.6)
+
+# Text input
+text = ["20", "40", "10", "2"]
+stored_text = []
+
+def draw_text(text, font, text_col, x, y, line_spacing=29):
+    for i, line in enumerate(text):
+        img = font.render(line, True, text_col)
+        width1 = img.get_width()
+        screen.blit(img, (x - (width1 / 2), y + i * (font.get_height() + line_spacing)))
 
 # Colors
 BLACK = (0, 0, 0)
@@ -56,7 +72,9 @@ angle = 0
 angle_speed = (2 * math.pi) / (drop_duration * fps)
 
 # Font for the text
-font = pygame.font.SysFont(None, 24)
+font_size = 24
+font = pygame.font.SysFont(None, font_size)
+font2 = pygame.font.SysFont(None, 35)
 small_font = pygame.font.SysFont(None, 18)
 
 # Main loop
@@ -65,13 +83,43 @@ started = False  # Simulation started flag
 clock = pygame.time.Clock()
 frames = 0
 
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+def reset_simulation():
+    global drop_duration, pulley_mass, weight_mass, pulley_radius, drop_speed, weight_x, weight_y, angle_speed, frames
+    # Read values from stored_text and convert them to integers
+    if len(stored_text) >= 4:
+        pulley_mass = int(stored_text[0])
+        pulley_radius = int(stored_text[1])
+        weight_mass = int(stored_text[2])
+        drop_duration = int(stored_text[3])
 
+    drop_speed = (height - pulley_center[1] - weight_height) / (drop_duration * fps)
+    weight_x = pulley_center[0] + initial_weight_x_offset - weight_width // 2
+    weight_y = pulley_center[1] + initial_weight_y_offset + pulley_radius
+    angle_speed = (2 * math.pi) / (drop_duration * fps)
+    frames = 0
+
+while running:
     # Clear screen
     screen.fill((202, 228, 241))
+
+    for event in pygame.event.get():
+        if event.type == pygame.TEXTINPUT:
+            text[-1] += event.text
+
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_BACKSPACE:
+                text[-1] = text[-1][:-1]
+                if len(text[-1]) == 0:
+                    if len(text) > 1:
+                        text = text[:-1]
+
+            elif event.key == pygame.K_RETURN:
+                stored_text.append(text[-1])
+                print("Stored text:", stored_text)  # Print the stored text to the console
+                text.append("")
+
+        if event.type == pygame.QUIT:
+            running = False
 
     if not started:
         # Draw buttons and title
@@ -83,15 +131,28 @@ while running:
             running = False  # Exit the program
 
     if started:
+        input_table.draw(screen)
+        if play_button.draw(screen):
+            print("PLAY")
+            reset_simulation()  # Reset simulation with updated parameters
+
+        if clear_button.draw(screen):
+            print("CLEAR")
+            text = [""]  # Clear the text
+
+        draw_text(text, font, (95, 43, 46), 60, 68)
+
         # Draw pulley (rotated)
         pygame.draw.circle(screen, (83, 56, 71), pulley_center, pulley_radius + border_thickness)
         pygame.draw.circle(screen, (117, 191, 46), pulley_center, pulley_radius)
         pygame.draw.circle(screen, (83, 56, 71), pulley_center, fulcrum_radius)
         pygame.draw.line(screen, (83, 56, 71), pulley_center,
-                         (pulley_center[0] + pulley_radius * math.cos(angle), pulley_center[1] + pulley_radius * math.sin(angle)), 2)
+                         (pulley_center[0] + pulley_radius * math.cos(angle),
+                          pulley_center[1] + pulley_radius * math.sin(angle)), 2)
 
         # Draw rope
-        pygame.draw.line(screen, (83, 56, 71), (pulley_center[0] + initial_weight_x_offset, pulley_center[1] + initial_weight_y_offset + pulley_radius),
+        pygame.draw.line(screen, (83, 56, 71), (
+        pulley_center[0] + initial_weight_x_offset, pulley_center[1] + initial_weight_y_offset + pulley_radius),
                          (weight_x + weight_width // 2, weight_y), 2)
 
         # Draw weight
