@@ -1,4 +1,5 @@
 import pygame
+import pygame_gui
 import sys
 import math
 import button
@@ -10,6 +11,9 @@ pygame.init()
 width, height = 600, 400
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Rotational Dynamics Simulation - Falling Mass")
+
+# Initialize Pygame_GUI
+MANAGER = pygame_gui.UIManager((width, height))
 
 # Buttons
 start_img = pygame.image.load('start_btn.png').convert_alpha()
@@ -93,12 +97,14 @@ def reset_simulation():
         drop_duration = int(stored_text[3])
 
     drop_speed = (height - pulley_center[1] - weight_height) / (drop_duration * fps)
-    weight_x = pulley_center[0] + initial_weight_x_offset - weight_width // 2
-    weight_y = pulley_center[1] + initial_weight_y_offset + pulley_radius
+    weight_x = pulley_center[0] + pulley_radius - weight_width // 2
+    weight_y = pulley_center[1] + (2*pulley_radius)
     angle_speed = (2 * math.pi) / (drop_duration * fps)
     frames = 0
 
 while running:
+    UiRefereshrate = clock.tick(60)/1000
+
     # Clear screen
     screen.fill((202, 228, 241))
 
@@ -120,6 +126,10 @@ while running:
 
         if event.type == pygame.QUIT:
             running = False
+        
+        MANAGER.process_events(event)
+
+    MANAGER.update(UiRefereshrate)
 
     if not started:
         # Draw buttons and title
@@ -132,6 +142,7 @@ while running:
 
     if started:
         input_table.draw(screen)
+
         if play_button.draw(screen):
             print("PLAY")
             reset_simulation()  # Reset simulation with updated parameters
@@ -139,6 +150,7 @@ while running:
         if clear_button.draw(screen):
             print("CLEAR")
             text = [""]  # Clear the text
+            stored_text = [] # Clear stored text so that you can reset multiple times
 
         draw_text(text, font, (95, 43, 46), 60, 68)
 
@@ -152,7 +164,7 @@ while running:
 
         # Draw rope
         pygame.draw.line(screen, (83, 56, 71), (
-        pulley_center[0] + initial_weight_x_offset, pulley_center[1] + initial_weight_y_offset + pulley_radius),
+        pulley_center[0] + pulley_radius, pulley_center[1]),    # Made it adjust dynamically to the position of the pulley
                          (weight_x + weight_width // 2, weight_y), 2)
 
         # Draw weight
@@ -174,10 +186,14 @@ while running:
             weight_y += drop_speed
             angle += angle_speed
             frames += 1
-
+        
+        MANAGER.draw_ui(screen)
+        PMassInput = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((45,65), (125, 20)), manager=MANAGER, object_id="#PullyMass")
+        PRadiusInput = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((45,107), (125, 20)), manager=MANAGER, object_id="#PullyRadius")
+        WMassInput = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((45,155), (125, 20)), manager=MANAGER, object_id="#WeighMass")
+        DurationInput = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((45,200), (125, 20)), manager=MANAGER, object_id="#DropDuration")
     # Update display
     pygame.display.flip()
-
     clock.tick(fps)
 
 # Quit Pygame
