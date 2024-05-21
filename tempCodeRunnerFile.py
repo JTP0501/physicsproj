@@ -1,0 +1,1 @@
+TextInput = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.rect((20,28), (100, 20)), manager=MANAGER, object_id="#PullyMass")
