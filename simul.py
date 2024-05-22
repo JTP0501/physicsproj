@@ -32,8 +32,16 @@ menu_title = button.Button(95, 53, title_img, 0.7)
 input_table = button.Button(20, 22, input_img, 0.6)
 
 # Text input
-text = ["20", "40", "10", "2"]
-stored_text = []
+PMassInput = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((45, 65), (125, 20)), manager=MANAGER, object_id="#PullyMass")
+PRadiusInput = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((45, 107), (125, 20)), manager=MANAGER, object_id="#PullyRadius")
+WMassInput = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((45, 155), (125, 20)), manager=MANAGER, object_id="#WeighMass")
+DurationInput = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((45, 200), (125, 20)), manager=MANAGER, object_id="#DropDuration")
+
+# Initialize text with default values
+PMassInput.set_text("20")
+PRadiusInput.set_text("40")
+WMassInput.set_text("10")
+DurationInput.set_text("2")
 
 def draw_text(text, font, text_col, x, y, line_spacing=29):
     for i, line in enumerate(text):
@@ -55,21 +63,22 @@ border_thickness = 2  # Thickness of the border
 fulcrum_radius = 3  # Radius of the fulcrum
 
 # Weight parameters
+base_weight_mass = 10  # Base weight mass for scaling
+base_weight_size = 40  # Base size for the weight
+base_font_size = 18  # Base font size for the weight text
 weight_mass = 10  # kg
-weight_width, weight_height = 40, 40  # Size of the weight
+weight_width = weight_height = base_weight_size  # Initial size of the weight
 weight_border_thickness = 1  # Thickness of the border for the weight box
 weight_second_border_thickness = 4
 
 # Simulation parameters
 drop_duration = 2  # seconds
 fps = 60  # frames per second
-drop_speed = (height - pulley_center[1] - weight_height) / (drop_duration * fps)  # pixels per frame
+drop_speed = (height - pulley_center[1] - weight_height - pulley_radius) / (drop_duration * fps)  # pixels per frame
 
 # Weight position
-initial_weight_x_offset = weight_width
-initial_weight_y_offset = -(weight_height) + 5
-weight_x = pulley_center[0] + initial_weight_x_offset - weight_width // 2  # Centered below the pulley
-weight_y = pulley_center[1] + initial_weight_y_offset + pulley_radius  # Starting position below the pulley
+weight_x = pulley_center[0] + pulley_radius - weight_width // 2  # Centered below the pulley
+weight_y = pulley_center[1] + pulley_radius  # Starting position below the pulley
 
 # Pulley rotation
 angle = 0
@@ -88,17 +97,24 @@ clock = pygame.time.Clock()
 frames = 0
 
 def reset_simulation():
-    global drop_duration, pulley_mass, weight_mass, pulley_radius, drop_speed, weight_x, weight_y, angle_speed, frames
+    global drop_duration, pulley_mass, weight_mass, pulley_radius, drop_speed, weight_x, weight_y, angle_speed, frames, weight_width, weight_height, small_font
     # Read values from stored_text and convert them to integers
-    if len(stored_text) >= 4:
-        pulley_mass = int(stored_text[0])
-        pulley_radius = int(stored_text[1])
-        weight_mass = int(stored_text[2])
-        drop_duration = int(stored_text[3])
+    pulley_mass = int(PMassInput.get_text())
+    pulley_radius = int(PRadiusInput.get_text())
+    weight_mass = int(WMassInput.get_text())
+    drop_duration = int(DurationInput.get_text())
 
-    drop_speed = (height - pulley_center[1] - weight_height) / (drop_duration * fps)
+    # Recalculate weight size based on weight mass
+    weight_scale = weight_mass / base_weight_mass
+    weight_width = weight_height = int(base_weight_size * weight_scale)
+
+    # Recalculate font size based on weight mass
+    font_size = int(base_font_size * weight_scale)
+    small_font = pygame.font.SysFont(None, font_size)
+
+    drop_speed = (height - pulley_center[1] - weight_height - pulley_radius) / (drop_duration * fps)
     weight_x = pulley_center[0] + pulley_radius - weight_width // 2
-    weight_y = pulley_center[1] + (2*pulley_radius)
+    weight_y = pulley_center[1] + pulley_radius
     angle_speed = (2 * math.pi) / (drop_duration * fps)
     frames = 0
 
@@ -109,27 +125,11 @@ while running:
     screen.fill((202, 228, 241))
 
     for event in pygame.event.get():
-        if event.type == pygame.TEXTINPUT:
-            text[-1] += event.text
-
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_BACKSPACE:
-                text[-1] = text[-1][:-1]
-                if len(text[-1]) == 0:
-                    if len(text) > 1:
-                        text = text[:-1]
-
-            elif event.key == pygame.K_RETURN:
-                stored_text.append(text[-1])
-                print("Stored text:", stored_text)  # Print the stored text to the console
-                text.append("")
 
         if event.type == pygame.QUIT:
             running = False
         
         MANAGER.process_events(event)
-
-    MANAGER.update(UiRefereshrate)
 
     if not started:
         # Draw buttons and title
@@ -149,10 +149,13 @@ while running:
 
         if clear_button.draw(screen):
             print("CLEAR")
-            text = [""]  # Clear the text
-            stored_text = [] # Clear stored text so that you can reset multiple times
-
-        draw_text(text, font, (95, 43, 46), 60, 68)
+            # Reset text input fields
+            PMassInput.set_text("")     
+            PRadiusInput.set_text("")
+            WMassInput.set_text("")
+            DurationInput.set_text("")
+            # Reset y position of the weight
+            weight_y = pulley_center[1] + pulley_radius
 
         # Draw pulley (rotated)
         pygame.draw.circle(screen, (83, 56, 71), pulley_center, pulley_radius + border_thickness)
@@ -179,7 +182,8 @@ while running:
 
         # Draw weight text
         weight_text = small_font.render(f'{weight_mass}kg', True, WHITE)
-        screen.blit(weight_text, (weight_x + 5, weight_y + weight_height // 4))
+        text_rect = weight_text.get_rect(center=(weight_x + weight_width // 2, weight_y + weight_height // 2))
+        screen.blit(weight_text, text_rect)
 
         # Update physics
         if frames < drop_duration * fps:
@@ -187,14 +191,13 @@ while running:
             angle += angle_speed
             frames += 1
         
+        # Draw input fields/UI elements
         MANAGER.draw_ui(screen)
-        PMassInput = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((45,65), (125, 20)), manager=MANAGER, object_id="#PullyMass")
-        PRadiusInput = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((45,107), (125, 20)), manager=MANAGER, object_id="#PullyRadius")
-        WMassInput = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((45,155), (125, 20)), manager=MANAGER, object_id="#WeighMass")
-        DurationInput = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((45,200), (125, 20)), manager=MANAGER, object_id="#DropDuration")
+
     # Update display
     pygame.display.flip()
     clock.tick(fps)
+    MANAGER.update(UiRefereshrate)
 
 # Quit Pygame
 pygame.quit()
