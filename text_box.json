@@ -1,0 +1,29 @@
+{
+     "text_entry_line":
+     {
+         "font": {
+             "size": 13,
+             "colour": "#000000",
+             "selected_colour": "#FFFFFF",
+             "shadow_colour": "#000000"
+                    },
+         "colours":
+         {
+             "dark_bg": "#ffffff",
+             "selected_bg": "#707070",
+             "normal_text": "#000000",
+             "selected_text": "#FFFFFF",
+             "normal_border": "#5f2b2e",
+             "text_cursor": "#404040"
+         },
+
+         "misc":
+         {
+             "shape": "rounded_rectangle",
+             "shape_corner_radius": "5",
+             "border_width": "1",
+             "shadow_width": "1",
+             "padding": "8, 0"
+         }
+     }
+ }
