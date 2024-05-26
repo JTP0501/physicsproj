@@ -12,8 +12,10 @@ width, height = 600, 400
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Rotational Dynamics Simulation - Falling Mass")
 
-# Initialize Pygame_GUI
-MANAGER = pygame_gui.UIManager((width, height))
+# Initialize Pygame_GUI with a custom theme
+theme = "text_box.json"
+MANAGER = pygame_gui.UIManager((width, height), theme)
+MANAGER.get_theme().load_theme(theme)
 
 # Buttons
 start_img = pygame.image.load('start_btn.png').convert_alpha()
@@ -26,22 +28,22 @@ input_img = pygame.image.load('input_table.png').convert_alpha()
 # Button instances
 start_button = button.Button(251, 240, start_img, 0.35)
 exit_button = button.Button(258, 298, exit_img, 0.35)
-play_button = button.Button(114, 255, play_img, 0.30)
-clear_button = button.Button(64, 255, clear_img, 0.30)
+play_button = button.Button(114, 269, play_img, 0.30)
+clear_button = button.Button(64, 269, clear_img, 0.30)
 menu_title = button.Button(95, 53, title_img, 0.7)
 input_table = button.Button(20, 22, input_img, 0.6)
 
 # Text input
-PMassInput = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((45, 65), (125, 20)), manager=MANAGER, object_id="#PullyMass")
-PRadiusInput = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((45, 107), (125, 20)), manager=MANAGER, object_id="#PullyRadius")
-WMassInput = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((45, 155), (125, 20)), manager=MANAGER, object_id="#WeighMass")
-DurationInput = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((45, 200), (125, 20)), manager=MANAGER, object_id="#DropDuration")
+PMassInput = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((43, 65), (98, 22)), manager=MANAGER, object_id="#PullyMass")
+PRadiusInput = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((43, 113), (98, 22)), manager=MANAGER, object_id="#PullyRadius")
+WMassInput = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((43, 161), (98, 22)), manager=MANAGER, object_id="#WeighMass")
+DurationInput = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((43, 210), (98, 22)), manager=MANAGER, object_id="#DropDuration")
 
 # Initialize text with default values
-PMassInput.set_text("20") # kg
-PRadiusInput.set_text("2") # m
-WMassInput.set_text("10") # kg
-DurationInput.set_text("8") # s
+PMassInput.set_text("20.0")  # kg
+PRadiusInput.set_text("2.0")  # m
+WMassInput.set_text("10.0")  # kg
+DurationInput.set_text("8.0")  # s
 
 def draw_text(text, font, text_col, x, y, line_spacing=29):
     for i, line in enumerate(text):
@@ -55,6 +57,9 @@ WHITE = (255, 255, 255)
 PURPLE = (128, 0, 128)
 GRAY = (169, 169, 169)
 
+# Time parameters
+time_left = 8.0
+
 # Pulley parameters
 pulley_mass = 20  # kg
 pulley_radius = 2 * 20  # pixels, smaller size (1m per 20 pixels)
@@ -66,7 +71,7 @@ fulcrum_radius = 3  # Radius of the fulcrum
 base_weight_mass = 10  # Base weight mass for scaling
 base_weight_size = 40  # Base size for the weight
 base_font_size = 18  # Base font size for the weight text
-weight_mass = 10  # kg
+weight_mass = 10.0  # kg
 weight_width = weight_height = base_weight_size  # Initial size of the weight
 weight_border_thickness = 1  # Thickness of the border for the weight box
 weight_second_border_thickness = 4
@@ -79,6 +84,7 @@ drop_speed = (height - pulley_center[1] - weight_height - pulley_radius) / (drop
 # Weight position
 weight_x = pulley_center[0] + pulley_radius - weight_width // 2  # Centered below the pulley
 weight_y = pulley_center[1] + pulley_radius  # Starting position below the pulley
+weight_scaley = 47
 
 # Pulley rotation
 angle = 0
@@ -93,19 +99,20 @@ small_font = pygame.font.SysFont(None, 18)
 # Main loop
 running = True
 started = False  # Simulation started flag
+playing = False
 clock = pygame.time.Clock()
 frames = 0
 angular_acceleration = 0
 angular_velocity = 0
 
 # Gravity
-g = 9.81 # m/s^2
+g = 9.81  # m/s^2
 
 def reset_simulation():
     global drop_duration, pulley_mass, weight_mass, pulley_radius, drop_speed, weight_x, weight_y, angle_speed, frames, weight_width, weight_height, small_font, angular_acceleration
     # Read values from stored_text and convert them to integers
     pulley_mass = float(PMassInput.get_text())
-    pulley_radius = 20 * float(PRadiusInput.get_text()) # Input in terms of meters, multiplies by 20 pixels
+    pulley_radius = 20 * float(PRadiusInput.get_text())  # Input in terms of meters, multiplies by 20 pixels
     weight_mass = float(WMassInput.get_text())
     drop_duration = float(DurationInput.get_text())
 
@@ -122,22 +129,20 @@ def reset_simulation():
     weight_y = pulley_center[1] + pulley_radius
     angle_speed = (2 * math.pi) / (drop_duration * fps)
     frames = 0
-
-    # Calculate angular acceleration 
-
-    moment_of_inertia = (0.5) * pulley_mass * ((pulley_radius / 20) ** 2) # I = 1/2mr^2
-    angular_acceleration = ((weight_mass) * (g) * (pulley_radius / 20)) / (moment_of_inertia + weight_mass * ((pulley_radius / 20) ** 2)) # α = [mgR]/[I + mgR^2]
+    
+    # Calculate angular acceleration
+    moment_of_inertia = (0.5) * pulley_mass * ((pulley_radius / 20) ** 2)  # I = 1/2mr^2
+    angular_acceleration = ((weight_mass) * (g) * (pulley_radius / 20)) / (moment_of_inertia + weight_mass * ((pulley_radius / 20) ** 2))  # α = [mgR]/[I + mgR^2]
 
     return angular_acceleration
 
 while running:
-    UiRefreshrate = clock.tick(60)/1000
+    UiRefreshrate = clock.tick(60) / 1000
 
     # Clear screen
     screen.fill((202, 228, 241))
 
     for event in pygame.event.get():
-
         if event.type == pygame.QUIT:
             running = False
         
@@ -158,6 +163,8 @@ while running:
         if play_button.draw(screen):
             print("PLAY")
             reset_simulation()  # Reset simulation with updated parameters
+            angular_velocity = 0
+            playing = True
 
         if clear_button.draw(screen):
             print("CLEAR")
@@ -168,6 +175,7 @@ while running:
             DurationInput.set_text("")
             # Reset y position of the weight
             weight_y = pulley_center[1] + pulley_radius
+            playing = False
 
         # Draw pulley (rotated)
         pygame.draw.circle(screen, (83, 56, 71), pulley_center, pulley_radius + border_thickness)
@@ -179,8 +187,8 @@ while running:
 
         # Draw rope
         pygame.draw.line(screen, (83, 56, 71), (
-        pulley_center[0] + pulley_radius, pulley_center[1]),    # Made it adjust dynamically to the position of the pulley
-                         (weight_x + weight_width // 2, weight_y), 2)
+            pulley_center[0] + pulley_radius, pulley_center[1]),    # Made it adjust dynamically to the position of the pulley
+            (weight_x + weight_width // 2, weight_y), 2)
 
         # Draw weight
         pygame.draw.rect(screen, (83, 56, 71),
@@ -198,29 +206,54 @@ while running:
         screen.blit(weight_text, text_rect)
 
         # Update physics (now based on calculated angular acceleration)
-        if frames < drop_duration * fps:
+        if frames < drop_duration * fps and playing:
             angular_velocity += angular_acceleration / fps
-
             angle += angular_velocity / fps
-
             linear_velocity = angular_velocity * pulley_radius
-
             weight_y += linear_velocity / fps
-            
+            weight_scaley += linear_velocity / fps
             frames += 1
             time_left = drop_duration - frames / fps
-        else :
+        elif playing:
             time_left = 0
 
         # Display angular acceleration (to be improved)
         angular_acceleration_text = font.render(f'Angular Acceleration: {angular_acceleration:.2f} rad/s²', True, BLACK)
-        angular_acceleration_text_x = 300 # Adjusted position
+        angular_acceleration_text_x = 300  # Adjusted position
         angular_acceleration_text_y = 20
         screen.blit(angular_acceleration_text, (angular_acceleration_text_x, angular_acceleration_text_y))
         
         # Display timer
         timer_text = font2.render(f'Time: {time_left:.2f}s', True, BLACK)
         screen.blit(timer_text, (width - 150, height - 50))
+
+        # Mini screen: Draw scaled weight and rope
+        mini_screen_x, mini_screen_y = 425, 45
+        mini_screen_width, mini_screen_height = 150, 100
+
+        pygame.draw.rect(screen, BLACK, (mini_screen_x, mini_screen_y, mini_screen_width + 2, mini_screen_height + 2))
+        pygame.draw.rect(screen, (202, 228, 241), (mini_screen_x + 1, mini_screen_y + 1, mini_screen_width, mini_screen_height))
+
+        # Only move the scaled weight once the main weight goes past the screen
+        if weight_y > height:
+            scaled_weight_x = mini_screen_x + 75 - weight_width // 6  # 3 times smaller and centered
+            scaled_weight_y = mini_screen_y + weight_scaley // 3  # Scale the y position by 3 times smaller
+
+            if scaled_weight_y < mini_screen_y + mini_screen_height:
+                pygame.draw.line(screen, (83, 56, 71), (mini_screen_x + 75, mini_screen_y), (scaled_weight_x + weight_width // 6, scaled_weight_y), 2)
+                pygame.draw.rect(screen, (83, 56, 71),
+                                 ((scaled_weight_x - weight_second_border_thickness // 2)-2, scaled_weight_y - weight_second_border_thickness // 2,
+                                  weight_width // 2 + 2 * weight_second_border_thickness // 2,
+                                  weight_height // 2 + 2 * weight_second_border_thickness // 2))
+                pygame.draw.rect(screen, WHITE,
+                                 ((scaled_weight_x - weight_border_thickness // 2)-2, scaled_weight_y - weight_border_thickness // 2,
+                                  weight_width // 2 + 2 * weight_border_thickness // 2,
+                                  weight_height // 2 + 2 * weight_border_thickness // 2))
+                pygame.draw.rect(screen, (223, 98, 26), (scaled_weight_x-2, scaled_weight_y, weight_width // 2, weight_height // 2))
+                pygame.draw.rect(screen, (202, 228, 241), (mini_screen_x + 1, mini_screen_y + 102, mini_screen_width, mini_screen_height))
+            # Reset the scaled weight's position if it goes out of the mini screen
+            if scaled_weight_y > mini_screen_y + mini_screen_height:
+                weight_scaley = 0
 
         # Draw input fields/UI elements
         MANAGER.draw_ui(screen)
