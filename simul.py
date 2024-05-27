@@ -225,6 +225,10 @@ tiles = math.ceil(width / background_img_width) + 1
 while running:
     UiRefreshrate = clock.tick(fps) / 1000
 
+    # Clear the screen
+    screen.fill((0, 0, 0))
+
+
     # Draw Scrolling Background
     for i in range(0, tiles):
         screen.blit(background_img, (i * background_img_width + scroll, 0))
@@ -246,7 +250,7 @@ while running:
         MANAGER.process_events(event)
     
     # Update the display
-    pygame.display.flip()
+    pygame.display.update()
 
     if not started:
         # Draw buttons and title
