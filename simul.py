@@ -8,7 +8,7 @@ import button
 pygame.init()
 
 # Screen dimensions
-width, height = 600, 400
+width, height = 800, 600
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Rotational Dynamics Simulation - Falling Mass")
 
@@ -25,12 +25,17 @@ clear_img = pygame.image.load('clear_btn.png').convert_alpha()
 title_img = pygame.image.load('menu_title.png').convert_alpha()
 input_img = pygame.image.load('input_table.png').convert_alpha()
 
+# Center the buttons and title
+start_button_x = (width // 2) - (start_img.get_width() * 0.35 / 2)
+exit_button_x = (width // 2) - (exit_img.get_width() * 0.35 / 2)
+menu_title_x = (width // 2) - (title_img.get_width() * 0.7 / 2)
+
 # Button instances
-start_button = button.Button(251, 240, start_img, 0.35)
-exit_button = button.Button(258, 298, exit_img, 0.35)
+start_button = button.Button(start_button_x, 240, start_img, 0.35)
+exit_button = button.Button(exit_button_x, 298, exit_img, 0.35)
 play_button = button.Button(114, 269, play_img, 0.30)
 clear_button = button.Button(64, 269, clear_img, 0.30)
-menu_title = button.Button(95, 53, title_img, 0.7)
+menu_title = button.Button(menu_title_x, 53, title_img, 0.7)
 input_table = button.Button(20, 22, input_img, 0.6)
 
 # Text input
@@ -45,25 +50,20 @@ PRadiusInput.set_text("2.0")  # m
 WMassInput.set_text("10.0")  # kg
 DurationInput.set_text("8.0")  # s
 
-def draw_text(text, font, text_col, x, y, line_spacing=29):
-    for i, line in enumerate(text):
-        img = font.render(line, True, text_col)
-        width1 = img.get_width()
-        screen.blit(img, (x - (width1 / 2), y + i * (font.get_height() + line_spacing)))
-
 # Colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 PURPLE = (128, 0, 128)
 GRAY = (169, 169, 169)
+RED = (255, 0, 0)
 
 # Time parameters
-time_left = 8.0
+time_left = 8.0 # s (default)
 
 # Pulley parameters
 pulley_mass = 20  # kg
 pulley_radius = 2 * 20  # pixels, smaller size (1m per 20 pixels)
-pulley_center = (300, 100)
+pulley_center = ((width // 2) + 10, 100)  # Centered horizontally
 border_thickness = 2  # Thickness of the border
 fulcrum_radius = 3  # Radius of the fulcrum
 
@@ -95,6 +95,7 @@ font_size = 24
 font = pygame.font.SysFont(None, font_size)
 font2 = pygame.font.SysFont(None, 35)
 small_font = pygame.font.SysFont(None, 18)
+warning_font = pygame.font.SysFont(None, 20)
 
 # Main loop
 running = True
@@ -104,22 +105,58 @@ clock = pygame.time.Clock()
 frames = 0
 angular_acceleration = 0
 angular_velocity = 0
+warning_text = ""
+MAX_FLAG_WEIGHT = 0 # Flag to discern if the user's input has reached the max, so to know if the visual representation logic will be different (for weight_mass)
 
-# Gravity
+# Gravity 
 g = 9.81  # m/s^2
 
+# Distance initialized to zero
+distance = 0  
+
+# Define maximum allowable values
+MAX_PULLEY_RADIUS = 10  # meters
+MAX_WEIGHT_MASS = 50  # kg
+
 def reset_simulation():
-    global drop_duration, pulley_mass, weight_mass, pulley_radius, drop_speed, weight_x, weight_y, angle_speed, frames, weight_width, weight_height, small_font, angular_acceleration
-    # Read values from stored_text and convert them to integers
+    global drop_duration, pulley_mass, weight_mass, pulley_radius, drop_speed, weight_x, weight_y, angle_speed, frames, weight_width, weight_height, small_font, angular_acceleration, final_velocity, distance
+    
+    # Reset warning text
+    warning_text = ""
+
+    # Read values from stored_text and convert them to floats
     pulley_mass = float(PMassInput.get_text())
-    pulley_radius = 20 * float(PRadiusInput.get_text())  # Input in terms of meters, multiplies by 20 pixels
+    pulley_radius = float(PRadiusInput.get_text())  # Input in terms of meters
     weight_mass = float(WMassInput.get_text())
     drop_duration = float(DurationInput.get_text())
 
-    # Recalculate weight size based on weight mass
-    weight_scale = weight_mass / base_weight_mass
-    weight_width = weight_height = int(base_weight_size * weight_scale)
+    # Check for maximum values and set warnings
+    if pulley_radius > MAX_PULLEY_RADIUS:
+        pulley_radius = MAX_PULLEY_RADIUS
+        warning_text = warning_font.render(f'Pulley radius exceeds maximum value. Set to maximum 10 m.', True, RED)
+        screen.blit(warning_text, (20, 510))
+        # Update the text in the input line
+        PRadiusInput.set_text(str(MAX_PULLEY_RADIUS))  # Set the input line text to the maximum allowable value
 
+    if weight_mass > MAX_WEIGHT_MASS:
+        MAX_FLAG_WEIGHT = 1
+        warning_text = warning_font.render(f'Weight mass exceeds maximum value. Visual representation adjusted to 50 kg.', True, RED)
+        screen.blit(warning_text, (20, 530))
+    else:
+        MAX_FLAG_WEIGHT = 0
+
+    pulley_radius *= 20  # Convert to pixels (1 meter = 20 pixels)
+
+    # Give out warning if applicable
+
+    # Recalculate weight size based on weight mass
+    if MAX_FLAG_WEIGHT != 1:
+        weight_scale = weight_mass / base_weight_mass
+        weight_width = weight_height = int(base_weight_size * weight_scale)
+    else:
+        weight_scale = MAX_WEIGHT_MASS / base_weight_mass
+        weight_width = weight_height = int(base_weight_size * weight_scale)
+        
     # Recalculate font size based on weight mass
     font_size = int(base_font_size * weight_scale)
     small_font = pygame.font.SysFont(None, font_size)
@@ -130,10 +167,12 @@ def reset_simulation():
     angle_speed = (2 * math.pi) / (drop_duration * fps)
     frames = 0
     
-    # Calculate angular acceleration
+    # Calculate angular acceleration, as well as the final velocity and distance after 'x' amount of seconds
     moment_of_inertia = (0.5) * pulley_mass * ((pulley_radius / 20) ** 2)  # I = 1/2mr^2
     angular_acceleration = ((weight_mass) * (g) * (pulley_radius / 20)) / (moment_of_inertia + weight_mass * ((pulley_radius / 20) ** 2))  # α = [mgR]/[I + mgR^2]
-
+    final_velocity = angular_acceleration * (pulley_radius / 20) * drop_duration * (-1)  # Vf = Vo + at where Vo is 0, a is α * R, and t is inputted drop duration (-)
+    distance = (final_velocity ** 2)/(2 * (angular_acceleration * (pulley_radius / 20))) # Vf^2 = Vo^2 + 2ad
+    
     return angular_acceleration
 
 while running:
@@ -217,23 +256,31 @@ while running:
         elif playing:
             time_left = 0
 
-        # Display angular acceleration (to be improved)
-        angular_acceleration_text = font.render(f'Angular Acceleration: {angular_acceleration:.2f} rad/s²', True, BLACK)
-        angular_acceleration_text_x = 300  # Adjusted position
-        angular_acceleration_text_y = 20
-        screen.blit(angular_acceleration_text, (angular_acceleration_text_x, angular_acceleration_text_y))
-        
         # Display timer
         timer_text = font2.render(f'Time: {time_left:.2f}s', True, BLACK)
-        screen.blit(timer_text, (width - 150, height - 50))
+        screen.blit(timer_text, (20, height - 50))
+
+        # Display velocity and angular acceleration after the simulation duration
+        if time_left <= 0:
+
+            angular_acceleration_text = font.render(f'Angular Acceleration: {angular_acceleration:.2f} rad/s²', True, BLACK)
+            angular_acceleration_text_x = 20  # Adjusted position
+            angular_acceleration_text_y = 450
+            screen.blit(angular_acceleration_text, (angular_acceleration_text_x, angular_acceleration_text_y))
+
+            final_velocity_text = font.render(f'Final Velocity: {final_velocity:.2f} m/s', True, BLACK)
+            screen.blit(final_velocity_text, (20, 470))
+
+            distance_text = font.render(f'Distance: {distance:.2f} m', True, BLACK)
+            screen.blit(distance_text, (20, 490))
 
         # Mini screen: Draw scaled weight and rope
-        mini_screen_x, mini_screen_y = 425, 45
+        mini_screen_x, mini_screen_y = 630, 45
         mini_screen_width, mini_screen_height = 150, 100
 
         pygame.draw.rect(screen, BLACK, (mini_screen_x, mini_screen_y, mini_screen_width + 2, mini_screen_height + 2))
         pygame.draw.rect(screen, (202, 228, 241), (mini_screen_x + 1, mini_screen_y + 1, mini_screen_width, mini_screen_height))
-
+        
         # Only move the scaled weight once the main weight goes past the screen
         if weight_y > height:
             scaled_weight_x = mini_screen_x + 75 - weight_width // 6  # 3 times smaller and centered
