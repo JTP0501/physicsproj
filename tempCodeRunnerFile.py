@@ -1,2 +1,1 @@
 
-            PMassInput.set_text("")     
