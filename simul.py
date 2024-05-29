@@ -262,7 +262,10 @@ def reset_simulation():
     moment_of_inertia = (0.5) * pulley_mass * ((pulley_radius / 20) ** 2)  # I = 1/2mr^2
     angular_acceleration1 = ((weight_mass) * (g) * (pulley_radius / 20)) / (moment_of_inertia + weight_mass * ((pulley_radius / 20) ** 2))  # α = [mgR]/[I + mgR^2]
     angular_acceleration2 = ((weight2_mass) * (g) * (pulley_radius / 20)) / (moment_of_inertia + weight2_mass * ((pulley_radius / 20) ** 2))  # α = [mgR]/[I + mgR^2]
-    angular_acceleration = angular_acceleration1-angular_acceleration2
+    if TwoFalling == True:
+        angular_acceleration = angular_acceleration1-angular_acceleration2
+    else:
+        angular_acceleration = ((weight_mass) * (g) * (pulley_radius / 20)) / (moment_of_inertia + weight_mass * ((pulley_radius / 20) ** 2)) # α = [mgR]/[I + mgR^2]
     final_velocity = (angular_acceleration * (pulley_radius / 20) * drop_duration * (-1))  # Vf = Vo + at where Vo is 0, a is α * R, and t is inputted drop duration (-)
     distance = (final_velocity**2) / (2 * (angular_acceleration * (pulley_radius / 20)))  # Vf^2 = Vo^2 + 2ad
 
@@ -337,12 +340,12 @@ while running:
             PMassInput.set_text("")
             PRadiusInput.set_text("")
             WMassInput.set_text("")
-            WMass2Input.set_text("")
             DurationInput.set_text("")
             # Reset y position of the weight
             if TwoFalling == True:
                 weight_y = pulley_center[1] + pulley_radius + 100
                 weight2_y = pulley_center[1] + pulley_radius + 100
+                WMass2Input.set_text("")
             else:
                 weight_y = pulley_center[1] + pulley_radius
             playing = False
