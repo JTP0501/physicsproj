@@ -243,6 +243,7 @@ def reset_simulation():
     small_font = pygame.font.SysFont(None, font_size)
 
     weight_x = pulley_center[0] + pulley_radius - weight_width // 2
+    weight_y = pulley_center[1] + pulley_radius
     if TwoFalling == True:
                 weight_y = pulley_center[1] + pulley_radius + 100
                 weight2_y = pulley_center[1] + pulley_radius + 100
@@ -413,7 +414,8 @@ while running:
             angle += angular_velocity / fps
             linear_velocity = angular_velocity * pulley_radius
             weight_y += linear_velocity / fps
-            weight2_y += (linear_velocity / fps)*-1
+            if TwoFalling == True:
+                weight2_y += (linear_velocity / fps)*-1
             weight_scaley += linear_velocity / fps
             frames += 1
             time_left = drop_duration - frames / fps
