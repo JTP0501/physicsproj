@@ -39,6 +39,7 @@ MANAGER2 = pygame_gui.UIManager((width, height), theme)
 MANAGER2.get_theme().load_theme(theme)
 
 # Buttons
+credit_img = pygame.image.load("credits_btn.png").convert_alpha()
 start_img = pygame.image.load("start_btn.png").convert_alpha()
 exit_img = pygame.image.load("exit_btn.png").convert_alpha()
 play_img = pygame.image.load("play_btn.png").convert_alpha()
@@ -56,6 +57,7 @@ menu_title_x = (width // 2) - (title_img.get_width() * 0.7 / 2)
 
 
 # Button instances
+credit_button = button.Button(10, 10, credit_img, 0.16)
 start_button = button.Button(start_button_x, 240, start_img, 0.35)
 exit_button = button.Button(exit_button_x, 298, exit_img, 0.35)
 play_button = button.Button(35, 269, play_img, 0.30)
@@ -321,6 +323,7 @@ while running:
 
     if not started:
         # Draw buttons and title
+        credit_button.draw(screen)
         menu_title.draw(screen)
         if start_button.draw(screen):
             started = True  # Start the simulation
